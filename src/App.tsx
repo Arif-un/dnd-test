@@ -13,7 +13,7 @@ import {
   type DragMoveEvent,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
-import { List, useListRef } from "react-window";
+import { List, useListRef, type RowComponentProps } from "react-window";
 import { generateSections } from "./data";
 import type { Section, FlatRow, BoundaryDrop, Card } from "./types";
 import "./App.css";
@@ -144,11 +144,7 @@ function VirtualRow({
   activeId,
   isDragActive,
   onToggle,
-}: {
-  index: number;
-  style: React.CSSProperties;
-  ariaAttributes: Record<string, unknown>;
-} & VirtualRowProps) {
+}: RowComponentProps<VirtualRowProps>) {
   const row = flatRows[index];
 
   if (row.type === "header") {
@@ -228,12 +224,22 @@ function BoundaryPopover({
   );
 }
 
-export default function App() {
-  const [sections, setSections] = useState<Section[]>(generateSections);
+function SortModal({
+  sections: initialSections,
+  onApply,
+  onClose,
+}: {
+  sections: Section[];
+  onApply: (sections: Section[]) => void;
+  onClose: () => void;
+}) {
+  const [sections, setSections] = useState<Section[]>(() =>
+    initialSections.map((s) => ({ ...s, cards: [...s.cards] }))
+  );
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [activePage, setActivePage] = useState<string>("");
   const [boundaryDrop, setBoundaryDrop] = useState<BoundaryDrop | null>(null);
-  const listRef = useListRef();
+  const listRef = useListRef(null);
   const autoScrollRef = useRef<number>(0);
   const dragYRef = useRef<number>(0);
 
@@ -468,44 +474,90 @@ export default function App() {
   );
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>Virtualized DnD List</h1>
-        <span className="subtitle">
-          {sections.reduce((sum, s) => sum + s.cards.length, 0)} cards &middot;{" "}
-          {sections.length} sections
-        </span>
-      </header>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={pointerWithin}
-        onDragStart={handleDragStart}
-        onDragMove={handleDragMove}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="list-container">
-          <List
-            listRef={listRef}
-            rowCount={flatRows.length}
-            rowHeight={(index: number) => getRowHeight(index)}
-            rowComponent={VirtualRow}
-            rowProps={rowProps}
-            style={{ height: "100%", width: "100%" }}
-            overscanCount={4}
-          />
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="modal-title">Sort Pages</h2>
+          <div className="modal-actions">
+            <button
+              type="button"
+              className="modal-btn modal-btn-primary"
+              onClick={() => onApply(sections)}
+            >
+              Apply
+            </button>
+            <button
+              type="button"
+              className="modal-btn modal-btn-secondary"
+              onClick={onClose}
+            >
+              Close
+            </button>
+          </div>
         </div>
-        <DragOverlay dropAnimation={null}>
-          {activeCard ? (
-            <OverlayCard card={activeCard} fromPage={activePage} />
-          ) : null}
-        </DragOverlay>
-      </DndContext>
-      {boundaryDrop && (
-        <BoundaryPopover
-          drop={boundaryDrop}
+        <div className="modal-body">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={pointerWithin}
+            onDragStart={handleDragStart}
+            onDragMove={handleDragMove}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="list-container">
+              <List
+                listRef={listRef}
+                rowCount={flatRows.length}
+                rowHeight={(index: number) => getRowHeight(index)}
+                rowComponent={VirtualRow}
+                rowProps={rowProps}
+                style={{ height: "100%", width: "100%" }}
+                overscanCount={4}
+              />
+            </div>
+            <DragOverlay dropAnimation={null}>
+              {activeCard ? (
+                <OverlayCard card={activeCard} fromPage={activePage} />
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </div>
+        {boundaryDrop && (
+          <BoundaryPopover
+            drop={boundaryDrop}
+            sections={sections}
+            onChoice={handleBoundaryChoice}
+            onDismiss={() => setBoundaryDrop(null)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  const [sections, setSections] = useState<Section[]>(generateSections);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleApply = useCallback((updatedSections: Section[]) => {
+    setSections(updatedSections);
+    setIsModalOpen(false);
+  }, []);
+
+  return (
+    <div className="app">
+      <button
+        type="button"
+        className="sort-button"
+        onClick={() => setIsModalOpen(true)}
+      >
+        Sort
+      </button>
+
+      {isModalOpen && (
+        <SortModal
           sections={sections}
-          onChoice={handleBoundaryChoice}
-          onDismiss={() => setBoundaryDrop(null)}
+          onApply={handleApply}
+          onClose={() => setIsModalOpen(false)}
         />
       )}
     </div>

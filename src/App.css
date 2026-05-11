@@ -1,0 +1,273 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card-bg);
+  flex-shrink: 0;
+}
+
+.app-header h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0;
+}
+
+.app-header .subtitle {
+  font-size: 11px;
+  color: var(--text);
+}
+
+.list-container {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Section Headers */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 36px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.section-header.collapsed {
+  height: 32px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.section-header.drop-zone-active {
+  box-shadow: inset 0 0 0 2px var(--accent-glow);
+}
+
+.section-header.drop-zone-over {
+  background: var(--accent-light);
+  box-shadow: inset 0 0 0 2px var(--accent), 0 0 8px var(--accent-glow);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.collapse-arrow {
+  font-size: 9px;
+  color: var(--text);
+  width: 12px;
+  text-align: center;
+}
+
+.header-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.item-count-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  padding: 0 6px;
+  border-radius: 8px;
+  min-width: 16px;
+  text-align: center;
+  line-height: 16px;
+}
+
+.drop-hint {
+  font-size: 10px;
+  color: var(--accent);
+  font-weight: 500;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Card Rows */
+.card-row {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+  align-items: stretch;
+}
+
+/* Cards */
+.card {
+  flex: 1;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+  transition: opacity 0.15s, box-shadow 0.15s;
+  max-width: calc(16.666% - 4px);
+}
+
+.card:hover {
+  box-shadow: 0 0 0 2px var(--accent-border);
+}
+
+.card:active {
+  cursor: grabbing;
+}
+
+.card-dragging {
+  opacity: 0.25;
+}
+
+.card img {
+  width: 100%;
+  height: 64px;
+  object-fit: cover;
+  display: block;
+}
+
+/* Floating badge */
+.card-badge {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 1px 5px;
+  border-radius: 3px;
+  z-index: 2;
+  line-height: 14px;
+  pointer-events: none;
+}
+
+/* Grip hint on hover */
+.card-grip {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 3px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  color: #555;
+  z-index: 2;
+  pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .card-grip {
+    background: rgba(30, 30, 40, 0.85);
+    color: #aaa;
+  }
+}
+
+.card:hover .card-grip {
+  opacity: 1;
+}
+
+.grip-icon {
+  pointer-events: none;
+}
+
+/* Drag Overlay */
+.overlay-card {
+  width: 90px;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  opacity: 0.8;
+  pointer-events: none;
+  position: relative;
+  border: 1px solid var(--accent-border);
+}
+
+.overlay-card img {
+  width: 100%;
+  height: 64px;
+  object-fit: cover;
+  display: block;
+}
+
+.from-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  z-index: 3;
+  white-space: nowrap;
+  line-height: 14px;
+}
+
+/* Boundary Popover */
+.popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.boundary-popover {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  box-shadow: var(--shadow-lg);
+  transform: translateX(-50%);
+}
+
+.boundary-popover button {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--accent-light);
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  font-family: var(--sans);
+}
+
+.boundary-popover button:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.popover-divider {
+  font-size: 10px;
+  color: var(--text);
+}

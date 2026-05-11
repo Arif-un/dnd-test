@@ -1,7 +1,7 @@
 import type { Section } from "./types";
 
 export function generateSections(): Section[] {
-  return Array.from({ length: 10 }, (_, sectionIdx) => ({
+  return Array.from({ length: 200 }, (_, sectionIdx) => ({
     id: `section-${sectionIdx}`,
     title: `Page ${sectionIdx + 1}`,
     collapsed: true,

@@ -129,9 +129,21 @@
   transition: box-shadow 0.15s, transform 0.15s;
 }
 
+.gallery-card {
+  cursor: grab;
+}
+
 .gallery-card:hover {
   box-shadow: var(--shadow);
   transform: translateY(-2px);
+}
+
+.gallery-card:active {
+  cursor: grabbing;
+}
+
+.gallery-card-dragging {
+  opacity: 0.25;
 }
 
 .gallery-card img {
@@ -548,4 +560,110 @@
 .popover-divider {
   font-size: 10px;
   color: var(--text);
+}
+
+/* Expanded Pagination Strip */
+.pagination-expanded {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  z-index: 40;
+  background: var(--card-bg);
+  border-top: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.pagination-expanded-visible {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.pagination-expanded-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pagination-expanded-scroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  padding: 8px 0;
+  scrollbar-width: thin;
+}
+
+.pagination-expanded-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+
+.pagination-expanded-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pagination-expanded-scroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.page-drop-target {
+  min-width: 48px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--sans);
+  color: var(--text-h);
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, transform 0.12s, box-shadow 0.12s;
+}
+
+.page-drop-target.drag-over {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  transform: scale(1.08);
+  box-shadow: 0 0 12px var(--accent-glow);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.page-drop-target.current-page {
+  opacity: 0.25;
+  pointer-events: none;
+  border-style: dashed;
+}
+
+/* Gallery Drag Preview */
+.gallery-drag-preview {
+  width: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
+  pointer-events: none;
+  border: 2px solid var(--accent);
+}
+
+.gallery-drag-preview img {
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  display: block;
 }

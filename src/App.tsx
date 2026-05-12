@@ -1,10 +1,23 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  useDraggable,
+  pointerWithin,
+  MeasuringStrategy,
+} from "@dnd-kit/core";
+import type { DragStartEvent, DragEndEvent, DragMoveEvent } from "@dnd-kit/core";
 import { generateSections } from "./data";
-import type { Section } from "./types";
+import type { Section, Card } from "./types";
 import { SortModal } from "./components/SortModal";
 import "./App.css";
 
-const IMAGES_PER_PAGE = 20;
+const AUTO_SCROLL_EDGE = 80;
+const AUTO_SCROLL_SPEED = 12;
 
 function SortIcon() {
   return (
@@ -106,11 +119,56 @@ function Pagination({
   );
 }
 
+function PageDropTarget({ page, isCurrent }: { page: number; isCurrent: boolean }) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `page-drop-${page}`,
+    disabled: isCurrent,
+    data: { page },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`page-drop-target${isCurrent ? " current-page" : ""}${isOver ? " drag-over" : ""}`}
+    >
+      {page}
+    </div>
+  );
+}
+
+function GalleryCard({ card, isDragging }: { card: Card; isDragging: boolean }) {
+  const { attributes, listeners, setNodeRef } = useDraggable({
+    id: card.id,
+    data: { card },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`gallery-card${isDragging ? " gallery-card-dragging" : ""}`}
+      {...attributes}
+      {...listeners}
+    >
+      <img src={card.imageUrl} alt={card.id} loading="lazy" />
+      <span className="gallery-badge">#{card.id.replace("card-", "")}</span>
+    </div>
+  );
+}
+
 export default function App() {
   const [sections, setSections] = useState<Section[]>(generateSections);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [draggingCard, setDraggingCard] = useState<Card | null>(null);
+
+  const stripRef = useRef<HTMLDivElement>(null);
+  const autoScrollRef = useRef(0);
+  const dragXRef = useRef(0);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
 
   const handleApply = useCallback((updatedSections: Section[]) => {
     setSections(updatedSections);
@@ -118,73 +176,178 @@ export default function App() {
   }, []);
 
   const pageCards = useMemo(() => {
-    const start = (currentPage - 1) * IMAGES_PER_PAGE;
-    const allCards = sections.flatMap((s) => s.cards);
-    return allCards.slice(start, start + IMAGES_PER_PAGE);
+    const section = sections[currentPage - 1];
+    return section ? section.cards : [];
   }, [sections, currentPage]);
 
-  const totalPages = Math.ceil(
-    sections.reduce((sum, s) => sum + s.cards.length, 0) / IMAGES_PER_PAGE
-  );
+  const totalPages = sections.length;
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const card = event.active.data.current?.card as Card | undefined;
+    if (card) setDraggingCard(card);
+  }, []);
+
+  const handleDragMove = useCallback((event: DragMoveEvent) => {
+    const activator = event.activatorEvent as PointerEvent;
+    const delta = event.delta;
+    dragXRef.current = activator.clientX + delta.x;
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { over, active } = event;
+    const card = active.data.current?.card as Card | undefined;
+    if (over && card) {
+      const targetPage = over.data.current?.page as number | undefined;
+      if (targetPage != null) {
+        const targetSectionIndex = targetPage - 1;
+        setSections((prev) => {
+          const fromSectionIdx = prev.findIndex((s) =>
+            s.cards.some((c) => c.id === card.id)
+          );
+          if (fromSectionIdx === -1) return prev;
+          if (fromSectionIdx === targetSectionIndex) return prev;
+
+          const next = prev.map((s) => ({
+            ...s,
+            cards: s.cards.filter((c) => c.id !== card.id),
+          }));
+          const updated = { ...card, sectionIndex: targetSectionIndex };
+          next[targetSectionIndex] = {
+            ...next[targetSectionIndex],
+            cards: [...next[targetSectionIndex].cards, updated],
+          };
+          return next;
+        });
+      }
+    }
+    setDraggingCard(null);
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setDraggingCard(null);
+  }, []);
+
+  useEffect(() => {
+    if (!draggingCard) {
+      cancelAnimationFrame(autoScrollRef.current);
+      return;
+    }
+
+    const tick = () => {
+      const el = stripRef.current;
+      if (!el) {
+        autoScrollRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      const x = dragXRef.current;
+      const distFromLeft = x - rect.left;
+      const distFromRight = rect.right - x;
+
+      if (distFromLeft < AUTO_SCROLL_EDGE && distFromLeft > 0) {
+        const speed = AUTO_SCROLL_SPEED * (1 - distFromLeft / AUTO_SCROLL_EDGE);
+        el.scrollLeft -= speed;
+      } else if (distFromRight < AUTO_SCROLL_EDGE && distFromRight > 0) {
+        const speed = AUTO_SCROLL_SPEED * (1 - distFromRight / AUTO_SCROLL_EDGE);
+        el.scrollLeft += speed;
+      }
+      autoScrollRef.current = requestAnimationFrame(tick);
+    };
+
+    autoScrollRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(autoScrollRef.current);
+  }, [draggingCard]);
 
   return (
-    <div className="app">
-      <header className="page-header">
-        <h1 className="page-title">Photo Gallery</h1>
-        <div className="page-toolbar">
-          <div className="search-wrapper">
-            <svg className="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-              <circle cx="7" cy="7" r="5" />
-              <path d="M11 11l3.5 3.5" />
-            </svg>
-            <input
-              type="text"
-              className="search-input"
-              placeholder="Search..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+    <DndContext
+      sensors={sensors}
+      collisionDetection={pointerWithin}
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+      onDragStart={handleDragStart}
+      onDragMove={handleDragMove}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="app">
+        <header className="page-header">
+          <h1 className="page-title">Photo Gallery</h1>
+          <div className="page-toolbar">
+            <div className="search-wrapper">
+              <svg className="search-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+                <circle cx="7" cy="7" r="5" />
+                <path d="M11 11l3.5 3.5" />
+              </svg>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              className="sort-button"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <SortIcon />
+              Rearrange
+            </button>
+            <ThemeToggle />
           </div>
-          <button
-            type="button"
-            className="sort-button"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <SortIcon />
-            Rearrange
-          </button>
-          <ThemeToggle />
+        </header>
+
+        <main className="gallery-grid">
+          {pageCards.map((card) => (
+            <GalleryCard
+              key={card.id}
+              card={card}
+              isDragging={draggingCard?.id === card.id}
+            />
+          ))}
+        </main>
+
+        <footer className="page-footer">
+          {!draggingCard ? (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          ) : null}
+        </footer>
+
+        <div
+          className={`pagination-expanded${draggingCard ? " pagination-expanded-visible" : ""}`}
+        >
+          <div className="pagination-expanded-label">Drop on a page</div>
+          <div className="pagination-expanded-scroll" ref={stripRef}>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <PageDropTarget
+                key={page}
+                page={page}
+                isCurrent={page === currentPage}
+              />
+            ))}
+          </div>
         </div>
-      </header>
 
-      <main className="gallery-grid">
-        {pageCards.map((card) => (
-          <div key={card.id} className="gallery-card">
-            <img
-              src={card.imageUrl}
-              alt={card.id}
-              loading="lazy"
-            />
-            <span className="gallery-badge">#{card.id.replace("card-", "")}</span>
-          </div>
-        ))}
-      </main>
+        <DragOverlay dropAnimation={null}>
+          {draggingCard ? (
+            <div className="gallery-drag-preview">
+              <img src={draggingCard.imageUrl} alt={draggingCard.id} />
+            </div>
+          ) : null}
+        </DragOverlay>
 
-      <footer className="page-footer">
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
-      </footer>
-
-      {isModalOpen && (
-        <SortModal
-          sections={sections}
-          onApply={handleApply}
-          onClose={() => setIsModalOpen(false)}
-        />
-      )}
-    </div>
+        {isModalOpen && (
+          <SortModal
+            sections={sections}
+            onApply={handleApply}
+            onClose={() => setIsModalOpen(false)}
+          />
+        )}
+      </div>
+    </DndContext>
   );
 }

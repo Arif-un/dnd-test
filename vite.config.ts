@@ -4,7 +4,7 @@ import babel from '@rolldown/plugin-babel'
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/dnd-poc/',
+  base: '/dnd-test/',
   plugins: [
     react(),
     babel({ presets: [reactCompilerPreset()] })
